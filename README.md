@@ -197,6 +197,18 @@ src/
 
 ### Documentation
 
+#### 📚 Complete Technical Documentation
+
+Comprehensive documentation about the authentication system architecture:
+
+- 📖 **[docs/README.md](./docs/README.md)** - Documentation hub and navigation
+- 🗂️ **[docs/01_ERD_DATABASE_DESIGN.md](./docs/01_ERD_DATABASE_DESIGN.md)** - Database schema, ERD, relationships
+- 🔄 **[docs/02_AUTHENTICATION_FLOW.md](./docs/02_AUTHENTICATION_FLOW.md)** - Complete authentication flows with diagrams
+- 🔐 **[docs/03_JWT_RSA_TECHNICAL_GUIDE.md](./docs/03_JWT_RSA_TECHNICAL_GUIDE.md)** - JWT with RSA encryption deep dive
+- 📊 **[docs/04_VISUAL_DIAGRAMS.md](./docs/04_VISUAL_DIAGRAMS.md)** - Mermaid diagrams (ERD, flows, architecture)
+
+#### 📋 Implementation Guides
+
 - 📖 **[RATE_LIMITING_IMPLEMENTATION.md](./RATE_LIMITING_IMPLEMENTATION.md)** - Complete rate limiting guide
 - 📋 **[RATE_LIMITING_QUICK_REFERENCE.md](./RATE_LIMITING_QUICK_REFERENCE.md)** - Quick reference
 - 🔍 **[RATE_LIMITING_ANALYSIS.md](./RATE_LIMITING_ANALYSIS.md)** - Guard vs Middleware analysis
