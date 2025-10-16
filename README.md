@@ -1,6 +1,6 @@
 # 📊 ERD Diagrams - Visual Documentation
 
-Tài liệu này chứa các sơ đồ ERD và flow diagrams sử dụng Mermaid syntax. Các diagram này có thể render trực tiếp trong GitHub, VS Code (với Mermaid extension), hoặc các Markdown viewers hỗ trợ Mermaid.
+Tài chứa các thiết sơ đồ ERD và flow diagrams.
 
 ---
 
@@ -260,37 +260,6 @@ sequenceDiagram
 
 ---
 
-### 6. Key Rotation Flow
-
-```mermaid
-sequenceDiagram
-    participant Admin as Admin/System
-    participant KS as KeyPairsService
-    participant DB as Database
-    participant NS as NotificationService
-    participant User as User
-
-    Admin->>KS: rotateKeyPair(userId)
-
-    KS->>DB: UPDATE key_pairs SET isActive=false
-    Note over KS,DB: Deactivate old keys
-    DB-->>KS: updated
-
-    KS->>KS: Generate new RSA-2048
-    Note over KS: New private + public key
-
-    KS->>DB: INSERT new key_pair
-    DB-->>KS: newKeyPair
-
-    KS-->>Admin: success
-
-    Admin->>NS: notifyUser(userId, 'Keys rotated')
-    NS->>User: Email notification
-    Note over User: Please login again
-```
-
----
-
 ## 🔐 JWT Token Structure
 
 ```mermaid
@@ -528,49 +497,6 @@ graph TB
     style B4 fill:#90EE90
     style B5 fill:#90EE90
     style B6 fill:#90EE90
-```
-
----
-
-## 📈 Monitoring Dashboard Metrics
-
-```mermaid
-graph TB
-    subgraph Authentication Metrics
-        A1[Login Rate]
-        A2[Failed Logins]
-        A3[Registration Rate]
-    end
-
-    subgraph Token Metrics
-        B1[Active Tokens]
-        B2[Refresh Rate]
-        B3[Token Errors]
-    end
-
-    subgraph Key Management
-        C1[Active Keys]
-        C2[Revoked Keys]
-        C3[Key Rotation Events]
-    end
-
-    subgraph Performance
-        D1[Response Time]
-        D2[Database Queries]
-        D3[Cache Hit Rate]
-    end
-
-    subgraph Security
-        E1[Suspicious Activities]
-        E2[Rate Limit Hits]
-        E3[Unauthorized Attempts]
-    end
-
-    style A2 fill:#FFB6C1
-    style B3 fill:#FFB6C1
-    style C2 fill:#FFB6C1
-    style E1 fill:#FF6B6B
-    style E3 fill:#FF6B6B
 ```
 
 ---
