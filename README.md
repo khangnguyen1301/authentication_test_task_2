@@ -1,6 +1,6 @@
-# 📊 ERD Diagrams - Visual Documentation
+# 📊 Rate limit với role và endpoint
 
-Tài chứa các thiết sơ đồ ERD và flow diagrams.
+[Xem chi tiết cấu hình rate limit](./docs/RATE_LIMITING_BY_ROLE.md)
 
 ---
 
