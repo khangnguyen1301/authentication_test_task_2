@@ -1,407 +1,606 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 📊 ERD Diagrams - Visual Documentation
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Tài liệu này chứa các sơ đồ ERD và flow diagrams sử dụng Mermaid syntax. Các diagram này có thể render trực tiếp trong GitHub, VS Code (với Mermaid extension), hoặc các Markdown viewers hỗ trợ Mermaid.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 📐 Entity Relationship Diagram (ERD)
 
-Secure Authentication System built with NestJS featuring:
+### Full Database Schema
 
-- 🔐 **RSA-256 JWT Authentication** with per-user asymmetric key pairs
-- 🍪 **Secure Refresh Tokens** (HTTP-only cookies)
-- 👥 **Role-based Access Control** (Admin, Moderator, User)
-- 🚦 **Role-based Rate Limiting** (5-1000 req/min by role)
-- 🔑 **Key Rotation** - Users can rotate their own RSA key pairs
-- 📊 **MySQL Database** with TypeORM
-- 🛡️ **Security Best Practices** - CORS, Helmet, input validation
+```mermaid
+erDiagram
+    ROLES ||--o{ USERS : "has"
+    USERS ||--o{ REFRESH_TOKENS : "owns"
+    USERS ||--o{ KEY_PAIRS : "owns"
 
-## 🚀 Quick Start (New Machine)
+    ROLES {
+        varchar(36) id PK "UUID"
+        varchar(50) name UK "Role name"
+        text description "Role description"
+        boolean is_active "Active status"
+        timestamp created_at
+        timestamp updated_at
+    }
 
-### Prerequisites
+    USERS {
+        varchar(36) id PK "UUID"
+        varchar(100) username UK "Username"
+        varchar(255) email UK "Email"
+        varchar(255) password "Hashed password"
+        varchar(36) role_id FK "Role reference"
+        timestamp created_at
+        timestamp updated_at
+    }
 
-- Node.js v18+
-- Docker Desktop running
+    REFRESH_TOKENS {
+        varchar(36) id PK "UUID"
+        varchar(36) user_id FK "User reference"
+        text token "JWT refresh token"
+        timestamp expires_at "Expiration time"
+        boolean is_revoked "Revocation status"
+        timestamp created_at
+    }
 
-### One-Command Setup
-
-**Windows PowerShell**:
-
-```powershell
-npm install && .\setup-database.ps1 && npm run start:dev
+    KEY_PAIRS {
+        varchar(36) id PK "UUID"
+        varchar(36) userId FK "User reference"
+        text privateKey "RSA private key"
+        text publicKey "RSA public key"
+        varchar(20) algorithm "Algorithm (RS256)"
+        boolean isActive "Active status"
+        timestamp createdAt
+        timestamp expiresAt "Expiration time"
+        timestamp revokedAt "Revocation time"
+    }
 ```
 
-**Linux/Mac**:
+---
 
-```bash
-npm install && chmod +x setup-database.sh && ./setup-database.sh && npm run start:dev
+## 🔄 Authentication Flow Diagrams
+
+### 1. Register Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant AC as AuthController
+    participant AS as AuthService
+    participant US as UsersService
+    participant KS as KeyPairsService
+    participant DB as Database
+
+    C->>AC: POST /auth/register
+    Note over C,AC: {username, email, password, role}
+
+    AC->>AS: register(dto)
+    AS->>AS: hashPassword(bcrypt)
+    AS->>US: create(user)
+    US->>DB: INSERT user
+    DB-->>US: user
+    US-->>AS: user
+
+    AS->>KS: createKeyPair(userId)
+    KS->>KS: Generate RSA-2048
+    KS->>DB: INSERT key_pair
+    DB-->>KS: keyPair
+    KS-->>AS: keyPair
+
+    AS-->>AC: user (without password)
+    AC-->>C: 201 Created
+    Note over C,AC: {id, username, email, role}
 ```
 
-**Or using NPM scripts**:
+---
 
-```bash
-npm run setup  # Install deps + setup DB + build
-npm run dev    # Start Docker + dev server
+### 2. Login Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant AC as AuthController
+    participant AS as AuthService
+    participant KS as KeyPairsService
+    participant DB as Database
+
+    C->>AC: POST /auth/login
+    Note over C,AC: {email, password}
+
+    AC->>AS: login(dto)
+    AS->>AS: validateUser()
+    AS->>DB: SELECT user WHERE email
+    DB-->>AS: user
+    AS->>AS: bcrypt.compare(password)
+
+    AS->>KS: getOrCreateKeyPair(userId)
+    KS->>DB: SELECT active key_pair
+    DB-->>KS: keyPair
+    KS-->>AS: keyPair
+
+    AS->>AS: generateAccessToken()
+    Note over AS: Sign with Private Key
+    AS->>AS: generateRefreshToken()
+    Note over AS: Sign with Private Key
+
+    AS->>DB: INSERT refresh_token
+    DB-->>AS: saved
+
+    AS-->>AC: {accessToken, refreshToken}
+    AC->>AC: Set HTTP-Only Cookie
+    AC-->>C: 200 OK
+    Note over C,AC: Set-Cookie: refreshToken=...<br/>{accessToken, user}
 ```
 
-Server will be running at: **http://localhost:3000/api**
+---
 
-📖 **Detailed setup guide**: See [SETUP_NEW_MACHINE.md](./SETUP_NEW_MACHINE.md)
+### 3. Protected Route Access Flow
 
-## 📦 NPM Scripts
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as JwtAuthGuard
+    participant S as JwtStrategy
+    participant KS as KeyPairsService
+    participant US as UsersService
+    participant DB as Database
+    participant Con as Controller
 
-### Quick Commands
+    C->>G: GET /auth/profile
+    Note over C,G: Authorization: Bearer token<br/>x-client-id: userId
 
-```bash
-npm run setup      # Complete setup (install + db + build)
-npm run dev        # Start Docker + dev server
-npm run db:setup   # Setup database (container + schema + seed)
-npm run db:reset   # Reset database completely
-npm run db:check   # Verify database state
+    G->>S: canActivate()
+    S->>S: Extract token from header
+    S->>S: Extract userId from x-client-id
+
+    S->>KS: getPublicKey(userId)
+    KS->>DB: SELECT key_pair WHERE userId
+    DB-->>KS: keyPair
+    KS-->>S: publicKey
+
+    S->>S: jwt.verify(token, publicKey)
+    Note over S: Verify signature with RSA
+
+    S->>US: findById(payload.sub)
+    US->>DB: SELECT user WHERE id
+    DB-->>US: user
+    US-->>S: user
+
+    S->>KS: getActiveKeyPair(userId)
+    KS->>DB: SELECT WHERE isActive=true
+    DB-->>KS: keyPair
+    KS-->>S: keyPair
+
+    alt Key is active
+        S-->>G: user object
+        G-->>Con: request.user = user
+        Con-->>C: 200 OK {user profile}
+    else Key revoked
+        S-->>G: UnauthorizedException
+        G-->>C: 401 Unauthorized
+    end
 ```
 
-### Database Management
+---
 
-| Command               | Description           |
-| --------------------- | --------------------- |
-| `npm run docker:up`   | Start MySQL container |
-| `npm run docker:down` | Stop MySQL container  |
-| `npm run docker:logs` | View MySQL logs       |
-| `npm run db:setup`    | Complete DB setup     |
-| `npm run db:migrate`  | Run schema migration  |
-| `npm run db:reset`    | Reset database        |
+### 4. Refresh Token Flow
 
-### Development
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant AC as AuthController
+    participant AS as AuthService
+    participant KS as KeyPairsService
+    participant DB as Database
 
-| Command             | Description           |
-| ------------------- | --------------------- |
-| `npm run start:dev` | Start with watch mode |
-| `npm run build`     | Build TypeScript      |
-| `npm test`          | Run tests             |
+    C->>AC: POST /auth/refresh
+    Note over C,AC: Cookie: refreshToken=...<br/>x-client-id: userId
 
-See [SETUP_NEW_MACHINE.md](./SETUP_NEW_MACHINE.md) for complete script reference.
+    AC->>AC: Extract cookie
+    AC->>AS: refreshTokens(userId, token)
 
-### Key Features
+    AS->>KS: getPrivateKey(userId)
+    KS->>DB: SELECT key_pair
+    DB-->>KS: keyPair
+    KS-->>AS: privateKey
 
-#### 1. Asymmetric JWT Authentication
+    AS->>AS: jwt.verify(token, privateKey)
 
-- Each user has unique RSA-2048 key pair
-- Access tokens signed with private key, verified with public key
-- Per-user key rotation without affecting other users
-- Stored in `key_pairs` table (private key encrypted)
+    AS->>DB: SELECT refresh_token
+    DB-->>AS: storedToken
 
-#### 2. Role-based Rate Limiting
+    alt Token valid and not revoked
+        AS->>AS: generateAccessToken()
+        AS->>AS: generateRefreshToken()
 
-| Role          | GET      | POST/PUT | Auth     | Tracking   |
-| ------------- | -------- | -------- | -------- | ---------- |
-| **Admin**     | 1000/min | 1000/min | 1000/min | User ID    |
-| **Moderator** | 300/min  | 100/min  | 200/min  | User ID    |
-| **User**      | 100/min  | 30/min   | 10/min   | User ID    |
-| **Guest**     | 10/min   | 10/min   | 5-10/min | IP Address |
+        AS->>DB: UPDATE old token SET revoked=true
+        AS->>DB: INSERT new refresh_token
 
-- Implemented with custom `RoleThrottlerGuard`
-- Automatic tracking by user ID (authenticated) or IP (anonymous)
-- 60-second rolling window
-
-#### 3. Refresh Token Security
-
-- HTTP-only cookies (XSS protection)
-- Secure flag in production
-- SameSite=Strict (CSRF protection)
-- Stored in database with device fingerprinting
-- One refresh token per device (tracked by client ID)
-
-#### 4. Role System
-
-- 3 predefined roles: `admin`, `moderator`, `user`
-- Default role for new registrations: `user`
-- Stored in separate `roles` table
-- Clean API responses (roleId hidden, role object included)
-
-### Project Structure
-
-```
-src/
-├── auth/                 # Authentication module
-│   ├── dto/             # Data transfer objects
-│   ├── entities/        # RefreshToken, KeyPair entities
-│   ├── guards/          # JwtAuthGuard
-│   ├── services/        # Auth business logic
-│   ├── strategies/      # JWT strategy
-│   └── auth.controller.ts
-├── users/               # User management
-│   ├── entities/        # User entity
-│   └── users.service.ts
-├── roles/               # Role system (NEW)
-│   ├── entities/        # Role entity
-│   ├── roles.service.ts
-│   └── roles.module.ts
-├── common/              # Shared components
-│   ├── guards/          # RoleThrottlerGuard
-│   └── middleware/      # ClientIdMiddleware
-├── config/              # Configuration
-│   ├── database.config.ts
-│   └── jwt.config.ts
-└── app.module.ts        # Root module
+        AS-->>AC: {accessToken, refreshToken}
+        AC->>AC: Update Cookie
+        AC-->>C: 200 OK
+        Note over C,AC: New accessToken
+    else Token invalid
+        AS-->>AC: UnauthorizedException
+        AC-->>C: 401 Unauthorized
+    end
 ```
 
-### API Endpoints
+---
 
-#### Authentication
+### 5. Logout Flow
 
-- `POST /api/auth/register` - Create new user (rate limit: 5/min)
-- `POST /api/auth/login` - Login with email/password (rate limit: 10/min)
-- `POST /api/auth/refresh` - Refresh access token (rate limit: 10/min)
-- `POST /api/auth/logout` - Invalidate refresh token
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant AC as AuthController
+    participant AS as AuthService
+    participant KS as KeyPairsService
+    participant DB as Database
 
-#### Protected Routes (require JWT)
+    C->>AC: POST /auth/logout
+    Note over C,AC: Authorization: Bearer token<br/>Cookie: refreshToken
 
-- `GET /api/auth/profile` - Get current user profile
-- `GET /api/auth/keys` - Get user's public key
-- `POST /api/auth/keys/rotate` - Rotate user's key pair (rate limit: 5/min)
+    AC->>AC: Extract refresh token
+    AC->>AS: logout(userId, refreshToken)
 
-### Recent Changes
+    AS->>DB: UPDATE refresh_token SET revoked=true
+    DB-->>AS: updated
 
-#### [2025-10-17] Role-based Rate Limiting ✅
+    AS->>KS: deactivateAllKeys(userId)
+    KS->>DB: UPDATE key_pairs SET isActive=false
+    Note over KS,DB: All tokens become invalid
+    DB-->>KS: updated
+    KS-->>AS: done
 
-- Implemented `RoleThrottlerGuard` with dynamic rate limits
-- Applied globally to all routes
-- Different limits for admin, moderator, user, and guest roles
-- Smart tracking: user ID (authenticated) or IP (anonymous)
-- See: `RATE_LIMITING_IMPLEMENTATION.md`
-
-#### [2025-10-16] Role Module Refactoring ✅
-
-- Moved role system to separate module (`src/roles/`)
-- Cleaner separation of concerns
-- Hidden `roleId` from API responses
-- Added `@Exclude()` decorator
-- See: `ROLE_MODULE_REFACTORING.md`
-
-### Documentation
-
-#### 📚 Complete Technical Documentation
-
-Comprehensive documentation about the authentication system architecture:
-
-- 📖 **[docs/README.md](./docs/README.md)** - Documentation hub and navigation
-- 🗂️ **[docs/01_ERD_DATABASE_DESIGN.md](./docs/01_ERD_DATABASE_DESIGN.md)** - Database schema, ERD, relationships
-- 🔄 **[docs/02_AUTHENTICATION_FLOW.md](./docs/02_AUTHENTICATION_FLOW.md)** - Complete authentication flows with diagrams
-- 🔐 **[docs/03_JWT_RSA_TECHNICAL_GUIDE.md](./docs/03_JWT_RSA_TECHNICAL_GUIDE.md)** - JWT with RSA encryption deep dive
-- 📊 **[docs/04_VISUAL_DIAGRAMS.md](./docs/04_VISUAL_DIAGRAMS.md)** - Mermaid diagrams (ERD, flows, architecture)
-
-#### 📋 Implementation Guides
-
-- 📖 **[RATE_LIMITING_IMPLEMENTATION.md](./RATE_LIMITING_IMPLEMENTATION.md)** - Complete rate limiting guide
-- 📋 **[RATE_LIMITING_QUICK_REFERENCE.md](./RATE_LIMITING_QUICK_REFERENCE.md)** - Quick reference
-- 🔍 **[RATE_LIMITING_ANALYSIS.md](./RATE_LIMITING_ANALYSIS.md)** - Guard vs Middleware analysis
-- 🔄 **[ROLE_MODULE_REFACTORING.md](./ROLE_MODULE_REFACTORING.md)** - Role system refactoring
-- 👤 **[ROLE_SYSTEM_IMPLEMENTATION.md](./ROLE_SYSTEM_IMPLEMENTATION.md)** - Original role system docs
-- 📝 **[CHANGELOG.md](./CHANGELOG.md)** - Version history
-
-### Testing
-
-#### Test Rate Limiting
-
-```powershell
-cd d:\authentication_test_HMD\authentication-system
-.\test_rate_limit.ps1
+    AS-->>AC: success message
+    AC->>AC: Clear Cookie
+    AC-->>C: 200 OK
+    Note over C,AC: All tokens invalidated
 ```
 
-Tests:
+---
 
-1. ✅ Guest login limiting (10 req/min)
-2. ✅ Guest register limiting (5 req/min)
-3. ✅ User GET requests (100 req/min)
-4. ✅ User auth endpoints (10 req/min)
-5. ✅ Admin high limits (1000 req/min)
+### 6. Key Rotation Flow
 
-#### Test Role System
+```mermaid
+sequenceDiagram
+    participant Admin as Admin/System
+    participant KS as KeyPairsService
+    participant DB as Database
+    participant NS as NotificationService
+    participant User as User
 
-```powershell
-.\test_role_refactor.ps1
+    Admin->>KS: rotateKeyPair(userId)
+
+    KS->>DB: UPDATE key_pairs SET isActive=false
+    Note over KS,DB: Deactivate old keys
+    DB-->>KS: updated
+
+    KS->>KS: Generate new RSA-2048
+    Note over KS: New private + public key
+
+    KS->>DB: INSERT new key_pair
+    DB-->>KS: newKeyPair
+
+    KS-->>Admin: success
+
+    Admin->>NS: notifyUser(userId, 'Keys rotated')
+    NS->>User: Email notification
+    Note over User: Please login again
 ```
 
-Tests:
+---
 
-1. ✅ roleId excluded from responses
-2. ✅ role object included in responses
-3. ✅ Register, login, profile endpoints
+## 🔐 JWT Token Structure
 
-### Database Setup
+```mermaid
+graph LR
+    A[JWT Token] --> B[Header]
+    A --> C[Payload]
+    A --> D[Signature]
 
-#### MySQL Container
+    B --> B1[Algorithm: RS256]
+    B --> B2[Type: JWT]
 
-```bash
-docker run --name auth_system_mysql \
-  -e MYSQL_ROOT_PASSWORD=root_password \
-  -e MYSQL_DATABASE=auth_system \
-  -e MYSQL_USER=auth_user \
-  -e MYSQL_PASSWORD=auth_password \
-  -p 3306:3306 \
-  -d mysql:8.0
+    C --> C1[sub: User ID]
+    C --> C2[email: Email]
+    C --> C3[role: Role]
+    C --> C4[iat: Issued At]
+    C --> C5[exp: Expires At]
+
+    D --> D1[RSA-SHA256]
+    D --> D2[Signed with Private Key]
+    D --> D3[Verified with Public Key]
 ```
 
-#### Run Schema
+---
 
-```bash
-mysql -h localhost -u auth_user -p auth_system < schema.sql
+## 🔑 Key Management Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created: User Register/Login
+    Created --> Active: Set isActive=true
+    Active --> Active: Sign/Verify JWT
+    Active --> Rotating: Key Rotation Triggered
+    Rotating --> Inactive: Create New Key
+    Active --> Revoked: Logout/Security Event
+    Inactive --> Archived: Cleanup Job
+    Revoked --> Archived: Cleanup Job
+    Archived --> [*]
+
+    note right of Active
+        - Sign Access Tokens
+        - Sign Refresh Tokens
+        - Verify with Public Key
+    end note
+
+    note right of Rotating
+        - Every 30-90 days
+        - Security breach
+        - Compliance requirement
+    end note
+
+    note right of Revoked
+        - All tokens invalid
+        - User must re-login
+    end note
 ```
 
-**Tables**: `users`, `roles`, `refresh_tokens`, `key_pairs`
+---
 
-### Environment Variables
+## 🛡️ Security Layers
 
-Create `.env` file:
-
-```env
-# Database
-DB_HOST=localhost
-DB_PORT=3306
-DB_USERNAME=auth_user
-DB_PASSWORD=auth_password
-DB_DATABASE=auth_system
-
-# JWT
-JWT_SECRET=your-secret-key-here
-JWT_ACCESS_EXPIRATION=15m
-JWT_REFRESH_EXPIRATION=7d
-
-# App
-NODE_ENV=development
-PORT=3000
+```mermaid
+graph TB
+    A[Incoming Request] --> B{Has JWT Token?}
+    B -->|No| Z[401 Unauthorized]
+    B -->|Yes| C{Extract x-client-id}
+    C -->|Missing| Z
+    C -->|Valid| D[Get Public Key]
+    D --> E{Verify JWT Signature}
+    E -->|Invalid| Z
+    E -->|Valid| F{Check Token Expiration}
+    F -->|Expired| Z
+    F -->|Valid| G{User Exists?}
+    G -->|No| Z
+    G -->|Yes| H{Key Pair Active?}
+    H -->|No| W[401 Key Revoked]
+    H -->|Yes| I{Check User Role}
+    I -->|Authorized| J[Access Granted]
+    I -->|Unauthorized| Y[403 Forbidden]
 ```
 
-### Security Features
+---
 
-- ✅ RSA-256 asymmetric key pairs per user
-- ✅ Refresh token rotation on use
-- ✅ HTTP-only cookies for refresh tokens
-- ✅ CORS configured
-- ✅ Helmet for security headers
-- ✅ Input validation with class-validator
-- ✅ Role-based rate limiting
-- ✅ IP and user tracking
-- ✅ Password hashing with bcrypt
-- ✅ SQL injection prevention (TypeORM)
+## 🔄 Token Lifecycle
 
-### Production Recommendations
+```mermaid
+graph TD
+    Start[User Login] --> Gen[Generate Key Pair if not exists]
+    Gen --> Sign[Sign JWT with Private Key]
+    Sign --> AT[Access Token - 1 hour]
+    Sign --> RT[Refresh Token - 7 days]
 
-1. **Enable HTTPS** - Set `HTTPS=true` in production
-2. **Use Redis** for rate limiting:
-   ```bash
-   npm install @nestjs/throttler-storage-redis ioredis
-   ```
-3. **Environment Variables** - Never commit `.env` file
-4. **Database** - Use connection pooling
-5. **Monitoring** - Set up logging and alerting
-6. **Rate Limit Headers** - Add `X-RateLimit-*` headers
+    AT --> Use[Use for API Requests]
+    Use --> Check{Token Expired?}
+    Check -->|No| Use
+    Check -->|Yes| Refresh[Use Refresh Token]
 
-### Technology Stack
+    Refresh --> Validate{Refresh Token Valid?}
+    Validate -->|Yes| NewAT[New Access Token]
+    Validate -->|No| Login[Re-login Required]
 
-- **Framework**: NestJS 10.x
-- **Language**: TypeScript 5.x
-- **Database**: MySQL 8.0
-- **ORM**: TypeORM
-- **Authentication**: Passport JWT
-- **Rate Limiting**: @nestjs/throttler
-- **Validation**: class-validator, class-transformer
-- **Security**: Helmet, CORS
+    NewAT --> Use
 
-### Status
+    RT --> RTCheck{RT Expired?}
+    RTCheck -->|Yes| Login
+    RTCheck -->|No| Refresh
 
-- ✅ **Compilation**: 0 TypeScript errors
-- ✅ **Server**: Running on http://localhost:3000/api
-- ✅ **Database**: Connected to MySQL
-- ✅ **Rate Limiting**: Active with role-based guards
-- ✅ **Authentication**: JWT with refresh tokens working
-- ✅ **Testing**: Scripts available
+    Use --> Logout{User Logout?}
+    Logout -->|Yes| Revoke[Revoke All Keys]
+    Revoke --> End[Tokens Invalidated]
 
-## Project setup
-
-```bash
-$ npm install
+    style AT fill:#90EE90
+    style RT fill:#FFB6C1
+    style Revoke fill:#FFB6C1
+    style End fill:#FF6B6B
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## 🏗️ System Architecture
 
-# watch mode
-$ npm run start:dev
+```mermaid
+graph TB
+    subgraph Client Layer
+        A[Browser]
+        B[Mobile App]
+        C[Postman]
+    end
 
-# production mode
-$ npm run start:prod
+    subgraph API Layer
+        D[AuthController]
+        E[JwtAuthGuard]
+        F[RolesGuard]
+        G[RoleThrottlerGuard]
+    end
+
+    subgraph Service Layer
+        H[AuthService]
+        I[KeyPairsService]
+        J[UsersService]
+        K[RolesService]
+    end
+
+    subgraph Strategy Layer
+        L[JwtStrategy]
+        M[JwtRefreshStrategy]
+    end
+
+    subgraph Database Layer
+        N[(MySQL)]
+        O[roles]
+        P[users]
+        Q[refresh_tokens]
+        R[key_pairs]
+    end
+
+    A --> D
+    B --> D
+    C --> D
+
+    D --> E
+    E --> F
+    F --> G
+
+    G --> H
+    H --> I
+    H --> J
+    H --> K
+
+    E --> L
+    E --> M
+
+    I --> N
+    J --> N
+    K --> N
+    H --> N
+
+    N --> O
+    N --> P
+    N --> Q
+    N --> R
+
+    style H fill:#FFD700
+    style I fill:#FFD700
+    style L fill:#87CEEB
+    style N fill:#98FB98
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## 📊 Performance Flow
 
-# e2e tests
-$ npm run test:e2e
+```mermaid
+graph LR
+    A[Request] --> B{Public Key Cached?}
+    B -->|Yes| C[Get from Cache - 1ms]
+    B -->|No| D[Query Database - 20ms]
+    D --> E[Cache for 1 hour]
+    E --> F[Return Public Key]
+    C --> F
 
-# test coverage
-$ npm run test:cov
+    F --> G[Verify JWT - 3ms]
+    G --> H{Valid?}
+    H -->|Yes| I[Proceed - Total ~4ms]
+    H -->|No| J[Reject - 401]
+
+    style C fill:#90EE90
+    style D fill:#FFB6C1
+    style I fill:#90EE90
+    style J fill:#FF6B6B
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## 🔐 Encryption Comparison
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+```mermaid
+graph TB
+    subgraph Symmetric - HS256
+        A1[Server] -->|Same Secret Key| A2[Sign JWT]
+        A2 -->|Same Secret Key| A3[Verify JWT]
+        A3 -.->|Risk: Key must be shared| A4[Other Services]
+    end
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+    subgraph Asymmetric - RS256
+        B1[Server] -->|Private Key| B2[Sign JWT]
+        B2 -->|Public Key| B3[Verify JWT]
+        B3 -.->|Safe: Public key can be shared| B4[Multiple Services]
+        B5[API Gateway] -->|Public Key| B3
+        B6[Microservice A] -->|Public Key| B3
+    end
+
+    style A1 fill:#FFB6C1
+    style A4 fill:#FFB6C1
+    style B1 fill:#90EE90
+    style B4 fill:#90EE90
+    style B5 fill:#90EE90
+    style B6 fill:#90EE90
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## 📈 Monitoring Dashboard Metrics
 
-Check out a few resources that may come in handy when working with NestJS:
+```mermaid
+graph TB
+    subgraph Authentication Metrics
+        A1[Login Rate]
+        A2[Failed Logins]
+        A3[Registration Rate]
+    end
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+    subgraph Token Metrics
+        B1[Active Tokens]
+        B2[Refresh Rate]
+        B3[Token Errors]
+    end
 
-## Support
+    subgraph Key Management
+        C1[Active Keys]
+        C2[Revoked Keys]
+        C3[Key Rotation Events]
+    end
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+    subgraph Performance
+        D1[Response Time]
+        D2[Database Queries]
+        D3[Cache Hit Rate]
+    end
 
-## Stay in touch
+    subgraph Security
+        E1[Suspicious Activities]
+        E2[Rate Limit Hits]
+        E3[Unauthorized Attempts]
+    end
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+    style A2 fill:#FFB6C1
+    style B3 fill:#FFB6C1
+    style C2 fill:#FFB6C1
+    style E1 fill:#FF6B6B
+    style E3 fill:#FF6B6B
+```
 
-## License
+---
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## 🎯 Decision Flow: Which Token to Use?
+
+```mermaid
+graph TD
+    A[Need Authentication?] -->|Yes| B{What type of action?}
+    A -->|No| C[No token needed]
+
+    B -->|API Request| D[Use Access Token]
+    B -->|Access expired| E[Use Refresh Token]
+    B -->|First time| F[Login to get tokens]
+
+    D --> G{Token valid?}
+    G -->|Yes| H[Process Request]
+    G -->|No| I{Error type?}
+
+    I -->|Expired| E
+    I -->|Invalid Signature| F
+    I -->|Key Revoked| F
+
+    E --> J{Refresh valid?}
+    J -->|Yes| K[Get new Access Token]
+    J -->|No| F
+
+    K --> D
+
+    style H fill:#90EE90
+    style F fill:#FFD700
+    style K fill:#87CEEB
+```
