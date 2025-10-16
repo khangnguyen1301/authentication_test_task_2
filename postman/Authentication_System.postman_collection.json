@@ -1,0 +1,520 @@
+{
+	"info": {
+		"_postman_id": "auth-system-2025",
+		"name": "Authentication System - JWT RSA",
+		"description": "Authentication System sử dụng JWT với mã hóa bất đối xứng RSA.\n\n## Features:\n- RSA-2048 Asymmetric Encryption\n- HTTP-Only Cookies cho Refresh Token\n- Role-based Access Control\n- Auto x-client-id header\n\n## Quick Start:\n1. Register account\n2. Login → auto save userId và accessToken\n3. Các request khác tự động dùng token đã save\n\n## Variables Auto-Saved:\n- `accessToken` - Access token từ login\n- `userId` - User ID từ login\n- `userEmail` - Email từ login",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Register",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test response",
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Response has user data\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('data');",
+							"    pm.expect(jsonData.data).to.have.property('id');",
+							"    pm.expect(jsonData.data).to.have.property('email');",
+							"    pm.expect(jsonData.data).to.have.property('username');",
+							"});",
+							"",
+							"// Auto-save user info",
+							"if (pm.response.code === 201) {",
+							"    try {",
+							"        var jsonData = pm.response.json();",
+							"        console.log(\"📦 Full Response:\", JSON.stringify(jsonData, null, 2));",
+							"        ",
+							"        if (jsonData.data && jsonData.data.id) {",
+							"            pm.collectionVariables.set(\"userId\", jsonData.data.id.toString());",
+							"            pm.collectionVariables.set(\"userEmail\", jsonData.data.email);",
+							"            console.log(\"✅ Registered successfully!\");",
+							"            console.log(\"📝 User ID saved:\", jsonData.data.id);",
+							"            console.log(\"📧 Email saved:\", jsonData.data.email);",
+							"        } else {",
+							"            console.error(\"❌ Cannot find user ID in response\");",
+							"        }",
+							"    } catch (e) {",
+							"        console.error(\"❌ Error parsing response:\", e);",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"Test@123456\",\n  \"role\": \"user\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/register",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"register"
+					]
+				},
+				"description": "Đăng ký tài khoản mới.\n\n**Request Body:**\n- `username` - Tên đăng nhập (unique)\n- `email` - Email (unique)\n- `password` - Mật khẩu (minimum 8 chars)\n- `role` - Vai trò (user/admin/moderator) - optional, default: user\n\n**Response:**\n- Tạo user mới\n- Tự động tạo RSA key pair cho user\n- Trả về user info (không có password)\n\n**Auto-saved:**\n- `userId` - ID của user vừa tạo\n- `userEmail` - Email của user"
+			},
+			"response": []
+		},
+		{
+			"name": "2. Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test response",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has access token\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('data');",
+							"    pm.expect(jsonData.data).to.have.property('accessToken');",
+							"    pm.expect(jsonData.data).to.have.property('user');",
+							"});",
+							"",
+							"pm.test(\"Refresh token in cookie\", function () {",
+							"    pm.expect(pm.cookies.has('refreshToken')).to.be.true;",
+							"});",
+							"",
+							"// Auto-save tokens và user info",
+							"if (pm.response.code === 200) {",
+							"    try {",
+							"        var jsonData = pm.response.json();",
+							"        console.log(\"📦 Full Response:\", JSON.stringify(jsonData, null, 2));",
+							"        ",
+							"        if (jsonData.data && jsonData.data.accessToken && jsonData.data.user) {",
+							"            // Save access token",
+							"            pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);",
+							"            ",
+							"            // Save user info",
+							"            pm.collectionVariables.set(\"userId\", jsonData.data.user.id.toString());",
+							"            pm.collectionVariables.set(\"userEmail\", jsonData.data.user.email);",
+							"            pm.collectionVariables.set(\"username\", jsonData.data.user.username);",
+							"            ",
+							"            console.log(\"✅ Login successful!\");",
+							"            console.log(\"📝 User ID saved:\", jsonData.data.user.id);",
+							"            console.log(\"� Email saved:\", jsonData.data.user.email);",
+							"            console.log(\"👤 Username saved:\", jsonData.data.user.username);",
+							"            console.log(\"�🔑 Access Token saved:\", jsonData.data.accessToken.substring(0, 20) + '...');",
+							"            console.log(\"🍪 Refresh Token in cookie\");",
+							"        } else {",
+							"            console.error(\"❌ Cannot find required data in response\");",
+							"        }",
+							"    } catch (e) {",
+							"        console.error(\"❌ Error parsing response:\", e);",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Test@123456\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"login"
+					]
+				},
+				"description": "Đăng nhập vào hệ thống.\n\n**Request Body:**\n- `email` - Email đã đăng ký\n- `password` - Mật khẩu\n\n**Response:**\n- `accessToken` - JWT token (expires in 1 hour)\n- `expiresIn` - Thời gian hết hạn (seconds)\n- `user` - Thông tin user\n\n**Cookie:**\n- `refreshToken` - HTTP-Only cookie (expires in 7 days)\n\n**Auto-saved:**\n- `accessToken` - Sử dụng cho các request tiếp theo\n- `userId` - Tự động gắn vào header x-client-id\n- `userEmail` - Email của user\n- `username` - Username"
+			},
+			"response": []
+		},
+		{
+			"name": "3. Get Profile",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has user profile\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('data');",
+							"    pm.expect(jsonData.data).to.have.property('id');",
+							"    pm.expect(jsonData.data).to.have.property('email');",
+							"    pm.expect(jsonData.data).to.have.property('username');",
+							"    pm.expect(jsonData.data).to.have.property('role');",
+							"});",
+							"",
+							"if (pm.response.code === 200) {",
+							"    try {",
+							"        var jsonData = pm.response.json();",
+							"        console.log(\"✅ Profile retrieved successfully!\");",
+							"        console.log(\"📦 Profile data:\", JSON.stringify(jsonData.data, null, 2));",
+							"    } catch (e) {",
+							"        console.error(\"❌ Error parsing response:\", e);",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Check if tokens exist",
+							"const token = pm.collectionVariables.get(\"accessToken\");",
+							"const userId = pm.collectionVariables.get(\"userId\");",
+							"",
+							"if (!token) {",
+							"    console.error(\"❌ Access token not found. Please login first!\");",
+							"} else {",
+							"    console.log(\"🔑 Using access token:\", token.substring(0, 20) + '...');",
+							"}",
+							"",
+							"if (!userId) {",
+							"    console.error(\"❌ User ID not found. Please login first!\");",
+							"} else {",
+							"    console.log(\"📝 Using User ID:\", userId);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-client-id",
+						"value": "{{userId}}",
+						"type": "text",
+						"description": "User ID - Required for JWT verification"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/auth/profile",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"profile"
+					]
+				},
+				"description": "Lấy thông tin profile của user đang login.\n\n**Headers Required:**\n- `Authorization: Bearer {{accessToken}}` - Auto từ login\n- `x-client-id: {{userId}}` - Auto từ login\n\n**Response:**\n- Thông tin user hiện tại\n- Role và permissions\n- `canEdit` - Quyền chỉnh sửa (admin only)\n\n**Note:**\n- Access token hết hạn sau 1 hour\n- Nếu expired → dùng Refresh Token endpoint"
+			},
+			"response": []
+		},
+		{
+			"name": "4. Refresh Token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has new access token\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('data');",
+							"    pm.expect(jsonData.data).to.have.property('accessToken');",
+							"});",
+							"",
+							"// Auto-save new access token",
+							"if (pm.response.code === 200) {",
+							"    try {",
+							"        var jsonData = pm.response.json();",
+							"        console.log(\"📦 Refresh Response:\", JSON.stringify(jsonData, null, 2));",
+							"        ",
+							"        if (jsonData.data && jsonData.data.accessToken) {",
+							"            pm.collectionVariables.set(\"accessToken\", jsonData.data.accessToken);",
+							"            console.log(\"✅ Token refreshed successfully!\");",
+							"            console.log(\"🔑 New access token saved:\", jsonData.data.accessToken.substring(0, 20) + '...');",
+							"            console.log(\"🍪 New refresh token in cookie\");",
+							"        } else {",
+							"            console.error(\"❌ Cannot find access token in response\");",
+							"        }",
+							"    } catch (e) {",
+							"        console.error(\"❌ Error parsing response:\", e);",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Check if userId exists",
+							"const userId = pm.collectionVariables.get(\"userId\");",
+							"const token = pm.collectionVariables.get(\"accessToken\");",
+							"",
+							"if (!userId) {",
+							"    console.error(\"❌ User ID not found. Please login first!\");",
+							"} else {",
+							"    console.log(\"📝 Using User ID:\", userId);",
+							"}",
+							"",
+							"// Old access token is required (even if expired)",
+							"if (!token) {",
+							"    console.warn(\"⚠️ Access token not found. Please login first!\");",
+							"} else {",
+							"    console.log(\"🔑 Using old token:\", token.substring(0, 20) + '...');",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-client-id",
+						"value": "{{userId}}",
+						"type": "text",
+						"description": "User ID - Required for JWT verification"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/auth/refresh",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"refresh"
+					]
+				},
+				"description": "Làm mới access token khi hết hạn.\n\n**Headers Required:**\n- `Authorization: Bearer {{accessToken}}` - Old access token (dù đã expired)\n- `x-client-id: {{userId}}` - User ID\n\n**Cookie Required:**\n- `refreshToken` - HTTP-Only cookie từ login\n\n**Process:**\n1. Verify refresh token từ cookie\n2. Generate new access token (1h)\n3. Generate new refresh token (7d)\n4. Revoke old refresh token\n5. Update cookie với new refresh token\n\n**Response:**\n- `accessToken` - New access token\n- `expiresIn` - 3600 seconds (1 hour)\n\n**Auto-saved:**\n- `accessToken` - New token tự động replace token cũ\n\n**Note:**\n- Refresh token hết hạn sau 7 ngày\n- Nếu refresh token expired → phải login lại"
+			},
+			"response": []
+		},
+		{
+			"name": "5. Logout",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Refresh token cookie cleared\", function () {",
+							"    // Cookie should be cleared after logout",
+							"    var cookie = pm.cookies.get('refreshToken');",
+							"    pm.expect(cookie).to.be.oneOf([undefined, null, '']);",
+							"});",
+							"",
+							"// Clear saved variables",
+							"if (pm.response.code === 200) {",
+							"    try {",
+							"        var jsonData = pm.response.json();",
+							"        console.log(\"📦 Logout Response:\", JSON.stringify(jsonData, null, 2));",
+							"        ",
+							"        pm.collectionVariables.set(\"accessToken\", \"\");",
+							"        pm.collectionVariables.set(\"userId\", \"\");",
+							"        pm.collectionVariables.set(\"userEmail\", \"\");",
+							"        pm.collectionVariables.set(\"username\", \"\");",
+							"        ",
+							"        console.log(\"✅ Logout successful!\");",
+							"        console.log(\"🗑️ All tokens and user data cleared\");",
+							"        console.log(\"🔑 All RSA keys revoked\");",
+							"        console.log(\"⚠️ You need to login again\");",
+							"    } catch (e) {",
+							"        console.error(\"❌ Error during logout:\", e);",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Check if tokens exist",
+							"const token = pm.collectionVariables.get(\"accessToken\");",
+							"const userId = pm.collectionVariables.get(\"userId\");",
+							"",
+							"if (!token) {",
+							"    console.error(\"❌ Access token not found. You are not logged in!\");",
+							"} else {",
+							"    console.log(\"🔑 Using access token:\", token.substring(0, 20) + '...');",
+							"}",
+							"",
+							"if (!userId) {",
+							"    console.error(\"❌ User ID not found. You are not logged in!\");",
+							"} else {",
+							"    console.log(\"📝 Logging out User ID:\", userId);",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-client-id",
+						"value": "{{userId}}",
+						"type": "text",
+						"description": "User ID - Required for JWT verification"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/auth/logout",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"logout"
+					]
+				},
+				"description": "Đăng xuất khỏi hệ thống.\n\n**Headers Required:**\n- `Authorization: Bearer {{accessToken}}`\n- `x-client-id: {{userId}}`\n\n**Cookie Required:**\n- `refreshToken` - HTTP-Only cookie\n\n**Process:**\n1. Revoke refresh token trong database\n2. Deactivate ALL RSA key pairs của user\n3. Clear refresh token cookie\n4. All access tokens become invalid immediately\n\n**Response:**\n- Success message\n- `keysRevoked: true`\n- Warning: Tất cả tokens đã bị vô hiệu hóa\n\n**Effect:**\n- ✅ Refresh token bị revoke\n- ✅ Tất cả RSA keys bị deactivate\n- ✅ Tất cả access tokens (kể cả chưa expired) invalid ngay lập tức\n- ✅ User bắt buộc phải login lại\n\n**Auto-cleared:**\n- All collection variables (accessToken, userId, etc.)\n\n**Security:**\n- Đây là \"Secure Logout\" - invalidate tất cả tokens\n- Phù hợp khi logout từ device quan trọng"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"console.log(\"🚀 Request to:\", pm.request.url.toString());",
+					"",
+					"// Log current auth state",
+					"const hasToken = !!pm.collectionVariables.get(\"accessToken\");",
+					"const hasUserId = !!pm.collectionVariables.get(\"userId\");",
+					"",
+					"if (hasToken && hasUserId) {",
+					"    console.log(\"✅ Authenticated as:\", pm.collectionVariables.get(\"userEmail\"));",
+					"} else if (!hasToken && !hasUserId) {",
+					"    console.log(\"ℹ️ Not authenticated. Login first if needed.\");",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"const responseTime = pm.response.responseTime;",
+					"console.log(\"⏱️ Response time:\", responseTime + \"ms\");",
+					"",
+					"// Check for common errors",
+					"if (pm.response.code === 401) {",
+					"    console.error(\"❌ Unauthorized - Token expired or invalid\");",
+					"    console.log(\"💡 Try: Login again or Refresh token\");",
+					"} else if (pm.response.code === 403) {",
+					"    console.error(\"❌ Forbidden - Insufficient permissions\");",
+					"} else if (pm.response.code === 429) {",
+					"    console.error(\"❌ Too Many Requests - Rate limit exceeded\");",
+					"    console.log(\"💡 Wait a moment and try again\");",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000/api",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userEmail",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "username",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
